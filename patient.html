@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Patient Portal | Springfield Teaching Hospital</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN / REGISTER -->
+<div class="auth-wrap" id="authView">
+  <div class="auth">
+    <div class="brand"><div class="logo">+</div><div><b>SPRINGFIELD</b><small>Patient Portal</small></div></div>
+
+    <form id="loginForm">
+      <h2>Welcome back</h2><p class="s">Sign in to manage your appointments and records.</p>
+      <label>Email</label><input type="email" id="lEmail" required>
+      <label>Password</label><input type="password" id="lPass" required>
+      <button class="btn green">Sign In</button>
+      <div class="hint">Demo: patient@demo.com / patient123</div>
+      <div class="switch">New patient? <a onclick="toggleAuth()">Create an account</a> · <a href="index.html">Home</a></div>
+    </form>
+
+    <form id="regForm" style="display:none">
+      <h2>Create account</h2><p class="s">Register to access hospital services online.</p>
+      <label>Full name</label><input id="rName" required>
+      <div class="row2"><div><label>Email</label><input type="email" id="rEmail" required></div><div><label>Phone</label><input id="rPhone" required></div></div>
+      <div class="row2"><div><label>NRC number</label><input id="rNrc" required></div><div><label>Date of birth</label><input type="date" id="rDob" required></div></div>
+      <div class="row2"><div><label>Gender</label><select id="rGender"><option>Female</option><option>Male</option></select></div><div><label>Password</label><input type="password" id="rPass" required minlength="6"></div></div>
+      <button class="btn green">Register</button>
+      <div class="switch">Already registered? <a onclick="toggleAuth()">Sign in</a></div>
+    </form>
+  </div>
+</div>
+
+<!-- PORTAL -->
+<div class="app" id="appView" style="display:none">
+  <aside class="side">
+    <div class="brand"><div class="logo">+</div><div><b>Nsansa</b><small>Patient Portal</small></div></div>
+    <nav>
+      <a data-page="dash" onclick="showPage('dash')">🏠 Dashboard</a>
+      <a data-page="book" onclick="showPage('book')">📅 Book Appointment</a>
+      <a data-page="appts" onclick="showPage('appts')">🗓 My Appointments</a>
+      <a data-page="records" onclick="showPage('records')">📋 Medical Records</a>
+      <a data-page="bills" onclick="showPage('bills')">💳 Billing</a>
+      <a data-page="profile" onclick="showPage('profile')">👤 My Profile</a>
+    </nav>
+    <button class="btn danger logout" onclick="logout()">Log out</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar"><div><h1 id="hello">Hello</h1><span>Manage your care in one place</span></div><a class="btn sm ghost" href="index.html">← Hospital website</a></div>
+
+    <section class="page" id="page-dash">
+      <div class="stats">
+        <div class="stat"><small>Upcoming appointments</small><b id="sUp">0</b></div>
+        <div class="stat"><small>Medical records</small><b id="sRec">0</b></div>
+        <div class="stat"><small>Unpaid bills</small><b id="sBill">0</b></div>
+        <div class="stat"><small>Amount due</small><b id="sDue">K 0</b></div>
+      </div>
+      <div class="panel"><h3>Emergency? <span class="tag red">Call +260 970 000 001</span></h3>
+        <p>Life-threatening emergencies are received 24/7 at the Casualty Desk without a referral letter.</p></div>
+      <div class="panel"><h3>Next appointments</h3><div id="dashAppts"></div></div>
+    </section>
+
+    <section class="page" id="page-book">
+      <div class="panel" style="max-width:600px"><h3>Book an appointment</h3>
+        <form id="bookForm">
+          <label>Department</label><select id="bDept" onchange="fillDoctors()"></select>
+          <label>Doctor</label><select id="bDoc"></select>
+          <div class="row2"><div><label>Date</label><input type="date" id="bDate" required></div><div><label>Time</label><input type="time" id="bTime" required></div></div>
+          <label>Reason for visit</label><textarea id="bReason" rows="3" required></textarea>
+          <button class="btn green">Request Appointment</button>
+        </form></div>
+    </section>
+
+    <section class="page" id="page-appts"><div class="panel"><h3>My appointments</h3><div id="apptTable"></div></div></section>
+    <section class="page" id="page-records"><div class="panel"><h3>Medical records</h3><div id="recTable"></div></div></section>
+    <section class="page" id="page-bills"><div class="panel"><h3>Billing</h3><div id="billTable"></div></div></section>
+
+    <section class="page" id="page-profile">
+      <div class="panel" style="max-width:600px"><h3>My profile</h3>
+        <form id="profForm">
+          <label>Full name</label><input id="pName" required>
+          <div class="row2"><div><label>Phone</label><input id="pPhone"></div><div><label>NRC</label><input id="pNrc" disabled></div></div>
+          <label>Email</label><input id="pEmail" disabled>
+          <button class="btn green">Save changes</button>
+        </form></div>
+    </section>
+  </main>
+</div>
+
+<script src="app.js"></script>
+<script>
+let me = null;
+
+// ---------- Login / register ----------
+function toggleAuth() {
+  const login = document.getElementById('loginForm');
+  const reg = document.getElementById('regForm');
+  const showReg = login.style.display !== 'none';
+  login.style.display = showReg ? 'none' : 'block';
+  reg.style.display = showReg ? 'block' : 'none';
+}
+
+document.getElementById('loginForm').onsubmit = e => {
+  e.preventDefault();
+  const email = lEmail.value.trim().toLowerCase();
+  const user = DB.get('patients', []).find(p => p.email.toLowerCase() === email && p.password === lPass.value);
+  if (!user) return toast('Wrong email or password');
+  sessionStorage.setItem('nth_patient', user.id);
+  start();
+};
+
+document.getElementById('regForm').onsubmit = e => {
+  e.preventDefault();
+  const list = DB.get('patients', []);
+  if (list.some(p => p.email.toLowerCase() === rEmail.value.trim().toLowerCase())) return toast('Email already registered');
+  const p = { id: uid(), name: rName.value, email: rEmail.value.trim(), phone: rPhone.value, nrc: rNrc.value, dob: rDob.value, gender: rGender.value, password: rPass.value };
+  list.push(p); DB.set('patients', list);
+  sessionStorage.setItem('nth_patient', p.id);
+  start();
+};
+
+function logout() { sessionStorage.removeItem('nth_patient'); location.reload(); }
+
+// ---------- Portal ----------
+function start() {
+  me = DB.get('patients', []).find(p => p.id === sessionStorage.getItem('nth_patient'));
+  if (!me) return;
+  authView.style.display = 'none';
+  appView.style.display = 'grid';
+  hello.textContent = 'Hello, ' + me.name.split(' ')[0] + ' 👋';
+  bDate.min = new Date().toISOString().slice(0, 10);
+  bDept.innerHTML = DB.get('departments', []).map(d => `<option>${d}</option>`).join('');
+  fillDoctors();
+  pName.value = me.name; pPhone.value = me.phone; pNrc.value = me.nrc; pEmail.value = me.email;
+  showPage('dash');
+  render();
+}
+
+function fillDoctors() {
+  bDoc.innerHTML = DB.get('doctors', []).filter(d => d.dept === bDept.value).map(d => `<option value="${d.id}">${d.name}</option>`).join('')
+    || '<option value="">No doctor listed – any available</option>';
+}
+
+function render() {
+  const doctors = DB.get('doctors', []);
+  const appts = DB.get('appointments', []).filter(a => a.patientId === me.id).sort((a, b) => a.date.localeCompare(b.date));
+  const records = DB.get('records', []).filter(r => r.patientId === me.id);
+  const bills = DB.get('bills', []).filter(b => b.patientId === me.id);
+  const unpaid = bills.filter(b => b.status === 'Unpaid');
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = appts.filter(a => a.date >= today && a.status !== 'Cancelled');
+
+  sUp.textContent = upcoming.length;
+  sRec.textContent = records.length;
+  sBill.textContent = unpaid.length;
+  sDue.textContent = money(unpaid.reduce((t, b) => t + b.amount, 0));
+
+  const apptRows = list => list.map(a => `<tr><td>${a.date}</td><td>${a.time}</td><td>${nameOf(doctors, a.doctorId)}</td><td>${a.reason}</td><td>${badge(a.status)}</td>
+    <td>${a.status === 'Cancelled' ? '' : `<button class="btn sm danger" onclick="cancelAppt('${a.id}')">Cancel</button>`}</td></tr>`).join('');
+  const head = '<table><thead><tr><th>Date</th><th>Time</th><th>Doctor</th><th>Reason</th><th>Status</th><th></th></tr></thead><tbody>';
+  dashAppts.innerHTML = upcoming.length ? head + apptRows(upcoming.slice(0, 3)) + '</tbody></table>' : '<p class="empty">No upcoming appointments.</p>';
+  apptTable.innerHTML = appts.length ? head + apptRows(appts) + '</tbody></table>' : '<p class="empty">You have not booked any appointments yet.</p>';
+
+  recTable.innerHTML = records.length ? '<table><thead><tr><th>Date</th><th>Doctor</th><th>Diagnosis</th><th>Treatment</th></tr></thead><tbody>' +
+    records.map(r => `<tr><td>${r.date}</td><td>${nameOf(doctors, r.doctorId)}</td><td>${r.diagnosis}</td><td>${r.treatment}</td></tr>`).join('') + '</tbody></table>'
+    : '<p class="empty">No medical records yet.</p>';
+
+  billTable.innerHTML = bills.length ? '<table><thead><tr><th>Description</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>' +
+    bills.map(b => `<tr><td>${b.desc}</td><td>${money(b.amount)}</td><td>${badge(b.status)}</td>
+      <td>${b.status === 'Unpaid' ? `<button class="btn sm green" onclick="pay('${b.id}')">Pay now</button>` : ''}</td></tr>`).join('') + '</tbody></table>'
+    : '<p class="empty">No bills.</p>';
+}
+
+bookForm.onsubmit = e => {
+  e.preventDefault();
+  const list = DB.get('appointments', []);
+  list.push({ id: uid(), patientId: me.id, doctorId: bDoc.value, date: bDate.value, time: bTime.value, reason: bReason.value, status: 'Pending' });
+  DB.set('appointments', list);
+  bookForm.reset(); render(); showPage('appts');
+  toast('Appointment requested – waiting for confirmation');
+};
+
+function cancelAppt(id) {
+  const list = DB.get('appointments', []);
+  list.find(a => a.id === id).status = 'Cancelled';
+  DB.set('appointments', list); render(); toast('Appointment cancelled');
+}
+
+function pay(id) {
+  const list = DB.get('bills', []);
+  list.find(b => b.id === id).status = 'Paid';
+  DB.set('bills', list); render(); toast('Payment recorded (demo)');
+}
+
+profForm.onsubmit = e => {
+  e.preventDefault();
+  const list = DB.get('patients', []);
+  const p = list.find(x => x.id === me.id);
+  p.name = pName.value; p.phone = pPhone.value;
+  DB.set('patients', list); me = p;
+  hello.textContent = 'Hello, ' + me.name.split(' ')[0] + ' 👋';
+  toast('Profile updated');
+};
+
+if (sessionStorage.getItem('nth_patient')) start();
+</script>
+</body>
+</html>

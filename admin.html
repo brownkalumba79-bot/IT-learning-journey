@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin Portal | Nsansa Teaching Hospital</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="auth-wrap" id="authView">
+  <form class="auth" id="loginForm">
+    <div class="brand"><div class="logo">+</div><div><b>SPRINGFIELD</b><small>Admin Portal</small></div></div>
+    <h2>Staff sign in</h2><p class="s">Authorized hospital staff only.</p>
+    <label>Username</label><input id="aUser" required>
+    <label>Password</label><input type="password" id="aPass" required>
+    <button class="btn green">Sign In</button>
+    <div class="hint">Demo: admin / admin123</div>
+    <div class="switch"><a href="index.html">← Back to hospital website</a></div>
+  </form>
+</div>
+
+<!-- ADMIN APP -->
+<div class="app" id="appView" style="display:none">
+  <aside class="side">
+    <div class="brand"><div class="logo">+</div><div><b>SPRINGFIELD</b><small>Admin Portal</small></div></div>
+    <nav>
+      <a data-page="dash" onclick="showPage('dash')">📊 Dashboard</a>
+      <a data-page="patients" onclick="showPage('patients')">🧑‍🤝‍🧑 Patients</a>
+      <a data-page="appts" onclick="showPage('appts')">📅 Appointments</a>
+      <a data-page="doctors" onclick="showPage('doctors')">🩺 Doctors</a>
+      <a data-page="depts" onclick="showPage('depts')">🏥 Departments</a>
+      <a data-page="records" onclick="showPage('records')">📋 Medical Records</a>
+      <a data-page="bills" onclick="showPage('bills')">💳 Billing</a>
+    </nav>
+    <button class="btn danger logout" onclick="logout()">Log out</button>
+  </aside>
+
+  <main class="main">
+    <div class="topbar"><div><h1>Hospital Administration</h1><span>Signed in as Administrator</span></div><a class="btn sm ghost" href="index.html">← Hospital website</a></div>
+
+    <section class="page" id="page-dash">
+      <div class="stats">
+        <div class="stat"><small>Total patients</small><b id="sP">0</b></div>
+        <div class="stat"><small>Doctors</small><b id="sD">0</b></div>
+        <div class="stat"><small>Pending appointments</small><b id="sA">0</b></div>
+        <div class="stat"><small>Unpaid revenue</small><b id="sR">K 0</b></div>
+      </div>
+      <div class="panel"><h3>Recent appointments</h3><div id="dashAppts"></div></div>
+    </section>
+
+    <section class="page" id="page-patients"><div class="panel">
+      <h3>Patients <button class="btn sm green" onclick="openModal('patient')">+ Add patient</button></h3>
+      <input class="search" id="qP" placeholder="Search patients…" oninput="filterTable('qP','tbP')">
+      <table><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>NRC</th><th>Gender</th><th></th></tr></thead><tbody id="tbP"></tbody></table></div></section>
+
+    <section class="page" id="page-appts"><div class="panel">
+      <h3>Appointments <button class="btn sm green" onclick="openModal('appt')">+ New appointment</button></h3>
+      <input class="search" id="qA" placeholder="Search appointments…" oninput="filterTable('qA','tbA')">
+      <table><thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Action</th></tr></thead><tbody id="tbA"></tbody></table></div></section>
+
+    <section class="page" id="page-doctors"><div class="panel">
+      <h3>Doctors <button class="btn sm green" onclick="openModal('doctor')">+ Add doctor</button></h3>
+      <table><thead><tr><th>Name</th><th>Department</th><th></th></tr></thead><tbody id="tbD"></tbody></table></div></section>
+
+    <section class="page" id="page-depts"><div class="panel">
+      <h3>Departments <button class="btn sm green" onclick="openModal('dept')">+ Add department</button></h3>
+      <table><thead><tr><th>Department</th><th>Doctors</th><th></th></tr></thead><tbody id="tbDe"></tbody></table></div></section>
+
+    <section class="page" id="page-records"><div class="panel">
+      <h3>Medical records <button class="btn sm green" onclick="openModal('record')">+ Add record</button></h3>
+      <table><thead><tr><th>Date</th><th>Patient</th><th>Doctor</th><th>Diagnosis</th><th>Treatment</th></tr></thead><tbody id="tbR"></tbody></table></div></section>
+
+    <section class="page" id="page-bills"><div class="panel">
+      <h3>Billing <button class="btn sm green" onclick="openModal('bill')">+ Create bill</button></h3>
+      <table><thead><tr><th>Patient</th><th>Description</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead><tbody id="tbB"></tbody></table></div></section>
+  </main>
+</div>
+
+<!-- Modal (one form reused for every "Add" button) -->
+<div class="modal-bg" id="modalBg">
+  <form class="modal" id="modalForm">
+    <h3 id="modalTitle" style="margin-bottom:6px"></h3>
+    <div id="modalFields"></div>
+    <button class="btn green">Save</button>
+    <button type="button" class="btn ghost" onclick="closeModal()">Cancel</button>
+  </form>
+</div>
+
+<script src="app.js"></script>
+<script>
+// ---------- Login ----------
+const ADMIN = { user: 'admin', pass: 'admin123' };
+
+document.getElementById('loginForm').onsubmit = e => {
+  e.preventDefault();
+  if (aUser.value === ADMIN.user && aPass.value === ADMIN.pass) {
+    sessionStorage.setItem('nth_admin', '1'); start();
+  } else toast('Wrong username or password');
+};
+function logout() { sessionStorage.removeItem('nth_admin'); location.reload(); }
+
+function start() {
+  authView.style.display = 'none';
+  appView.style.display = 'grid';
+  showPage('dash');
+  render();
+}
+
+// ---------- Rendering ----------
+function render() {
+  const patients = DB.get('patients', []), doctors = DB.get('doctors', []), depts = DB.get('departments', []);
+  const appts = DB.get('appointments', []), records = DB.get('records', []), bills = DB.get('bills', []);
+
+  sP.textContent = patients.length;
+  sD.textContent = doctors.length;
+  sA.textContent = appts.filter(a => a.status === 'Pending').length;
+  sR.textContent = money(bills.filter(b => b.status === 'Unpaid').reduce((t, b) => t + b.amount, 0));
+
+  const apptRow = (a, actions) => `<tr><td>${nameOf(patients, a.patientId)}</td><td>${nameOf(doctors, a.doctorId)}</td><td>${a.date}</td><td>${a.time}</td><td>${a.reason}</td><td>${badge(a.status)}</td>${actions ? `<td>${actions(a)}</td>` : ''}</tr>`;
+  const sorted = [...appts].sort((x, y) => y.date.localeCompare(x.date));
+
+  dashAppts.innerHTML = sorted.length
+    ? '<table><thead><tr><th>Patient</th><th>Doctor</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th></tr></thead><tbody>' + sorted.slice(0, 5).map(a => apptRow(a)).join('') + '</tbody></table>'
+    : '<p class="empty">No appointments yet.</p>';
+
+  tbP.innerHTML = patients.map(p => `<tr><td>${p.name}</td><td>${p.email}</td><td>${p.phone}</td><td>${p.nrc}</td><td>${p.gender}</td>
+    <td><button class="btn sm danger" onclick="removeItem('patients','${p.id}')">Delete</button></td></tr>`).join('');
+
+  tbA.innerHTML = sorted.map(a => apptRow(a, x =>
+    (x.status === 'Pending' ? `<button class="btn sm green" onclick="setStatus('${x.id}','Confirmed')">Confirm</button> ` : '') +
+    (x.status === 'Confirmed' ? `<button class="btn sm green" onclick="setStatus('${x.id}','Completed')">Complete</button> ` : '') +
+    (x.status !== 'Cancelled' && x.status !== 'Completed' ? `<button class="btn sm danger" onclick="setStatus('${x.id}','Cancelled')">Cancel</button>` : ''))).join('');
+
+  tbD.innerHTML = doctors.map(d => `<tr><td>${d.name}</td><td>${d.dept}</td><td><button class="btn sm danger" onclick="removeItem('doctors','${d.id}')">Delete</button></td></tr>`).join('');
+
+  tbDe.innerHTML = depts.map(d => `<tr><td>${d}</td><td>${doctors.filter(x => x.dept === d).length}</td>
+    <td><button class="btn sm danger" onclick="removeDept('${d}')">Delete</button></td></tr>`).join('');
+
+  tbR.innerHTML = records.map(r => `<tr><td>${r.date}</td><td>${nameOf(patients, r.patientId)}</td><td>${nameOf(doctors, r.doctorId)}</td><td>${r.diagnosis}</td><td>${r.treatment}</td></tr>`).join('');
+
+  tbB.innerHTML = bills.map(b => `<tr><td>${nameOf(patients, b.patientId)}</td><td>${b.desc}</td><td>${money(b.amount)}</td><td>${badge(b.status)}</td>
+    <td>${b.status === 'Unpaid' ? `<button class="btn sm green" onclick="markPaid('${b.id}')">Mark paid</button>` : ''}</td></tr>`).join('');
+}
+
+// ---------- Actions ----------
+function setStatus(id, status) {
+  const list = DB.get('appointments', []);
+  list.find(a => a.id === id).status = status;
+  DB.set('appointments', list); render(); toast('Appointment ' + status.toLowerCase());
+}
+function markPaid(id) {
+  const list = DB.get('bills', []);
+  list.find(b => b.id === id).status = 'Paid';
+  DB.set('bills', list); render(); toast('Bill marked as paid');
+}
+function removeItem(key, id) {
+  if (!confirm('Delete this item?')) return;
+  DB.set(key, DB.get(key, []).filter(i => i.id !== id)); render(); toast('Deleted');
+}
+function removeDept(name) {
+  if (!confirm('Delete department ' + name + '?')) return;
+  DB.set('departments', DB.get('departments', []).filter(d => d !== name)); render(); toast('Deleted');
+}
+
+// ---------- Modal forms ----------
+let mode = '';
+const opts = (list, val, label) => list.map(i => `<option value="${val(i)}">${label(i)}</option>`).join('');
+
+function openModal(type) {
+  mode = type;
+  const patients = DB.get('patients', []), doctors = DB.get('doctors', []), depts = DB.get('departments', []);
+  const pSel = `<label>Patient</label><select id="f_patient">${opts(patients, p => p.id, p => p.name)}</select>`;
+  const dSel = `<label>Doctor</label><select id="f_doctor">${opts(doctors, d => d.id, d => d.name + ' (' + d.dept + ')')}</select>`;
+  const forms = {
+    patient: ['Add patient', `<label>Full name</label><input id="f_name" required><div class="row2"><div><label>Email</label><input type="email" id="f_email" required></div><div><label>Phone</label><input id="f_phone" required></div></div><div class="row2"><div><label>NRC</label><input id="f_nrc" required></div><div><label>Gender</label><select id="f_gender"><option>Female</option><option>Male</option></select></div></div>`],
+    appt: ['New appointment', pSel + dSel + `<div class="row2"><div><label>Date</label><input type="date" id="f_date" required></div><div><label>Time</label><input type="time" id="f_time" required></div></div><label>Reason</label><input id="f_reason" required>`],
+    doctor: ['Add doctor', `<label>Name</label><input id="f_name" required><label>Department</label><select id="f_dept">${opts(depts, d => d, d => d)}</select>`],
+    dept: ['Add department', `<label>Department name</label><input id="f_name" required>`],
+    record: ['Add medical record', pSel + dSel + `<label>Date</label><input type="date" id="f_date" required><label>Diagnosis</label><input id="f_diag" required><label>Treatment</label><textarea id="f_treat" rows="2" required></textarea>`],
+    bill: ['Create bill', pSel + `<label>Description</label><input id="f_desc" required><label>Amount (K)</label><input type="number" id="f_amount" min="1" required>`]
+  };
+  modalTitle.textContent = forms[type][0];
+  modalFields.innerHTML = forms[type][1];
+  modalBg.classList.add('show');
+}
+function closeModal() { modalBg.classList.remove('show'); }
+
+modalForm.onsubmit = e => {
+  e.preventDefault();
+  const v = id => document.getElementById(id).value;
+  const add = (key, item) => { const l = DB.get(key, []); l.push(item); DB.set(key, l); };
+
+  if (mode === 'patient') add('patients', { id: uid(), name: v('f_name'), email: v('f_email'), phone: v('f_phone'), nrc: v('f_nrc'), gender: v('f_gender'), dob: '', password: 'patient123' });
+  if (mode === 'appt') add('appointments', { id: uid(), patientId: v('f_patient'), doctorId: v('f_doctor'), date: v('f_date'), time: v('f_time'), reason: v('f_reason'), status: 'Confirmed' });
+  if (mode === 'doctor') add('doctors', { id: uid(), name: v('f_name'), dept: v('f_dept') });
+  if (mode === 'dept') { const l = DB.get('departments', []); l.push(v('f_name')); DB.set('departments', l); }
+  if (mode === 'record') add('records', { id: uid(), patientId: v('f_patient'), doctorId: v('f_doctor'), date: v('f_date'), diagnosis: v('f_diag'), treatment: v('f_treat') });
+  if (mode === 'bill') add('bills', { id: uid(), patientId: v('f_patient'), desc: v('f_desc'), amount: Number(v('f_amount')), status: 'Unpaid' });
+
+  closeModal(); render(); toast('Saved');
+};
+
+if (sessionStorage.getItem('nth_admin')) start();
+</script>
+</body>
+</html>
